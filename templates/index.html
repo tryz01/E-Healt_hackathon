@@ -20,7 +20,7 @@
   <section id="welcomeScreen" class="screen active">
     <div class="welcome-card">
       <h2>ยินดีต้อนรับ</h2>
-      <p>เกมนี้จะวัดการขยับของมือทั้งสองข้าง โดยแต่ละรอบจะมีสีของมือซ้ายและมือขวาแสดงพร้อมกัน</p>
+      <p>เกมนี้จะวัดการขยับของมือทั้งสองข้าง โดยแต่ละรอบจะมีสีของมือซ้ายและมือขวาแสดงพร้อมกัน และตำแหน่งจะสุ่มใหม่ทุก round</p>
       <ul>
         <li>มีทั้งหมด <strong>12 รอบ</strong> และแต่ละรอบจะสลับชุดสีใหม่</li>
         <li>มือซ้ายต้องไปแตะสีของซ้าย และมือขวาต้องไปแตะสีของขวา</li>
@@ -48,7 +48,7 @@
 
     <div class="game-area">
       <div class="video-container" id="videoContainer">
-        <div class="targets-overlay" role="group" aria-label="เป้าหมายสีของมือ">
+        <div class="targets-overlay" role="group" aria-label="เป้าหมายสีของมือ สุ่มตำแหน่งทุก round">
           <div id="targetPurple" class="target-zone purple" data-color="neutral" aria-label="พื้นที่เตรียมพร้อม"></div>
           <div id="targetRed" class="target-zone red" data-color="left" aria-label="เป้าหมายมือซ้าย"></div>
           <div id="targetBlue" class="target-zone blue" data-color="right" aria-label="เป้าหมายมือขวา"></div>

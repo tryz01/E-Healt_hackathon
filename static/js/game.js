@@ -3,6 +3,17 @@ const TARGET_RADIUS = 120;
 const ROUND_TIME_LIMIT_MS = 8500;
 const BETWEEN_ROUND_DELAY_MS = 1200;
 const MAX_SCORE = TOTAL_ROUNDS * 2;
+const TARGET_SLOT_XS = ["18%", "50%", "82%"];
+const TARGET_SLOT_TOP = "clamp(3.4rem, 8vh, 4.4rem)";
+
+function shuffle(values) {
+  const copy = [...values];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
 
 const COLOR_SCHEMES = [
   { leftHex: "#43a047", rightHex: "#e53935", neutralHex: "#8e24aa", leftLabel: "เขียว", rightLabel: "แดง" },
@@ -52,6 +63,11 @@ class ColorMatchGame {
     this.roundHitDistances = { left: null, right: null };
     this.roundTimer = null;
     this.advanceTimer = null;
+    this.targetPositions = {
+      left: TARGET_SLOT_XS[0],
+      right: TARGET_SLOT_XS[1],
+      neutral: TARGET_SLOT_XS[2],
+    };
 
     this.video = document.getElementById("webcam");
     this.canvas = document.getElementById("skeletonCanvas");
@@ -126,6 +142,7 @@ class ColorMatchGame {
 
   applyScheme() {
     const scheme = this.currentScheme;
+    this.randomizeTargetPositions();
 
     document.getElementById(ZONE_IDS.left).style.background = scheme.leftHex;
     document.getElementById(ZONE_IDS.right).style.background = scheme.rightHex;
@@ -138,6 +155,22 @@ class ColorMatchGame {
 
     if (this.tracker) {
       this.tracker.setHandColors(scheme.leftHex, scheme.rightHex);
+    }
+  }
+
+  randomizeTargetPositions() {
+    const slots = shuffle(TARGET_SLOT_XS);
+    this.targetPositions = {
+      left: slots[0],
+      right: slots[1],
+      neutral: slots[2],
+    };
+
+    for (const [key, x] of Object.entries(this.targetPositions)) {
+      const zone = document.getElementById(ZONE_IDS[key]);
+      if (!zone) continue;
+      zone.style.left = x;
+      zone.style.top = TARGET_SLOT_TOP;
     }
   }
 

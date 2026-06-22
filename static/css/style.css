@@ -110,17 +110,21 @@ body.game-active .app-header {
 
 /* ─── Target zones ───────────────────────────────────────────── */
 .target-zone {
+  position: absolute;
   width: 130px;
   height: 130px;
   border-radius: 50%;
   border: 5px solid rgba(255, 255, 255, 0.45);
+  --target-scale: 1;
+  transform: translateX(-50%) scale(var(--target-scale));
+  transform-origin: center center;
   transition: transform 0.2s, box-shadow 0.2s, background 0.4s;
   opacity: 0.65;
 }
 
 .target-zone.active {
   opacity: 1;
-  transform: scale(1.15);
+  --target-scale: 1.15;
   box-shadow: 0 0 0 4px var(--focus-ring), 0 0 16px 4px rgba(255,152,0,0.4);
   animation: pulse 0.8s ease-in-out infinite alternate;
 }
@@ -154,10 +158,7 @@ body.game-active .app-header {
 
 .targets-overlay {
   position: absolute;
-  top: 0; left: 0; right: 0;
-  display: flex;
-  justify-content: space-around;
-  padding: 2.5rem 1.5rem 0.6rem;
+  inset: 0;
   z-index: 2;
   pointer-events: none;
 }
