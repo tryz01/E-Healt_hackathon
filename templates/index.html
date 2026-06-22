@@ -1,141 +1,218 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="th">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ใส่สีให้ถูก - ตรวจความคล่องมือ</title>
-  <link rel="stylesheet" href="/static/css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
-</head>
-<body>
-  <header class="app-header">
-    <h1 class="app-title">ใส่สีให้ถูก</h1>
-    <div class="score-box" aria-live="polite">
-      คะแนน: <span id="scoreValue">0</span> / <span id="scoreMaxValue">24</span>
-    </div>
-  </header>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>เกมใส่สี</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <h1 class="app-title">ใส่สีตามสีที่ได้รับ</h1>
+      <div class="score-box" aria-live="polite">
+        คะแนน: <span id="scoreValue">0</span>
+      </div>
+    </header>
 
-  <section id="welcomeScreen" class="screen active">
-    <div class="welcome-card">
-      <h2>ยินดีต้อนรับ</h2>
-      <p>เกมนี้จะวัดการขยับของมือทั้งสองข้าง โดยแต่ละรอบจะมีสีของมือซ้ายและมือขวาแสดงพร้อมกัน และตำแหน่งจะสุ่มใหม่ทุก round</p>
-      <ul>
-        <li>มีทั้งหมด <strong>12 รอบ</strong> และแต่ละรอบจะสลับชุดสีใหม่</li>
-        <li>มือซ้ายต้องไปแตะสีของซ้าย และมือขวาต้องไปแตะสีของขวา</li>
-        <li>เมื่อแตะถูกครบทั้ง 2 ข้างในรอบนั้น ระบบจะไปต่ออัตโนมัติ</li>
-      </ul>
-      <div class="hand-legend">
-        <div class="legend-item">
-          <span class="legend-dot left" aria-hidden="true"></span>
-          <span>มือซ้าย</span>
+    <!-- Welcome Screen -->
+    <section id="welcomeScreen" class="screen active">
+      <div class="welcome-card">
+        <h2>ยินดีต้อนรับ</h2>
+        <p>
+          เกมนี้ช่วยประเมินการเคลื่อนไหวของมือทั้งสองข้าง
+          และช่วยฝึกการเคลื่อนไหวของมือ
+        </p>
+        <ul>
+          <li>
+            มีทั้งหมด <strong>12 ด่าน</strong> — แต่ละด่านชุดสีจะเปลี่ยนใหม่
+          </li>
+          <li>แต่ละด่านมี 3 วงสี: วงซ้าย, วงขวา และวงกลาง</li>
+          <li>เมื่อมีสีเป้าหมายปรากฏ ให้เอามือที่ถูกต้องไปแตะวงนั้น</li>
+        </ul>
+        <div class="hand-legend">
+          <div class="legend-item">
+            <span class="legend-dot left" aria-hidden="true"></span>
+            <span>มือซ้าย — วงซ้าย</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot right" aria-hidden="true"></span>
+            <span>มือขวา — วงขวา</span>
+          </div>
         </div>
-        <div class="legend-item">
-          <span class="legend-dot right" aria-hidden="true"></span>
-          <span>มือขวา</span>
+        <div class="controls">
+          <button id="btnStartWelcome" class="btn btn-primary" type="button">
+            เริ่มเล่น
+          </button>
         </div>
       </div>
+    </section>
+
+    <!-- Game Screen -->
+    <section id="gameScreen" class="screen">
+      <div class="game-area">
+        <div class="video-container" id="videoContainer">
+          <!-- Target zones overlay -->
+          <div class="targets-overlay" role="group" aria-label="เป้าหมายสี">
+            <div
+              id="targetPurple"
+              class="target-zone purple"
+              data-color="neutral"
+              aria-label="เป้าหมายรอ"
+            ></div>
+            <div
+              id="targetRed"
+              class="target-zone red"
+              data-color="left"
+              aria-label="เป้าหมายมือซ้าย"
+            ></div>
+            <div
+              id="targetBlue"
+              class="target-zone blue"
+              data-color="right"
+              aria-label="เป้าหมายมือขวา"
+            ></div>
+          </div>
+
+          <!-- Live camera -->
+          <video id="webcam" playsinline aria-label="ภาพจากกล้อง"></video>
+
+          <!-- Skeleton tracking canvas (layered above video) -->
+          <canvas id="skeletonCanvas" aria-hidden="true"></canvas>
+
+          <!-- Hand dot indicators -->
+          <div id="handDotLeft" class="hand-dot left" aria-hidden="true"></div>
+          <div
+            id="handDotRight"
+            class="hand-dot right"
+            aria-hidden="true"
+          ></div>
+
+          <!-- Level badge -->
+          <div id="levelBadge" class="level-badge" aria-live="polite">
+            ด่าน 1
+          </div>
+
+          <!-- Level-up overlay -->
+          <div
+            id="levelUpOverlay"
+            class="level-up-overlay"
+            aria-live="assertive"
+          >
+            <div class="level-up-card">
+              <div class="level-up-title"></div>
+              <div class="level-up-next"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress section -->
+      <div class="progress-section">
+        <div class="progress-label">
+          <span id="levelText">ด่าน 1 / 10</span>
+          <span id="progressText">รอบ 0 / 10</span>
+        </div>
+        <div
+          class="progress-bar"
+          role="progressbar"
+          aria-valuenow="0"
+          aria-valuemin="0"
+          aria-valuemax="10"
+        >
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+      </div>
+
+      <!-- Round instruction text -->
+      <div class="instruction-section">
+        <div id="mainInstruction" class="main-instruction">เตรียมตัวให้พร้อม</div>
+        <div id="subInstruction" class="sub-instruction"></div>
+      </div>
+
+      <div id="feedbackBanner" class="feedback-banner" aria-live="polite"></div>
+
       <div class="controls">
-        <button id="btnStartWelcome" class="btn btn-primary" type="button">เริ่มเล่น</button>
+        <button id="btnStop" class="btn btn-secondary" type="button" disabled>
+          หยุด
+        </button>
+        <button id="btnFinish" class="btn btn-success" type="button" disabled>
+          ดูผล
+        </button>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="gameScreen" class="screen">
-    <p class="instruction" id="mainInstruction">มือซ้ายแตะสีซ้าย มือขวาแตะสีขวา</p>
-    <p class="sub-instruction" id="subInstruction">ยกมือทั้งสองข้างให้กล้องเห็นก่อนเริ่มรอบ</p>
+    <!-- Result Screen -->
+    <section id="resultScreen" class="screen">
+      <div class="result-card">
+        <h2>ผลการประเมิน</h2>
+        <p id="resultSummary" class="prediction-box"></p>
+        <p>
+          คะแนนรวม: <strong id="resultScore">0</strong> / <strong id="resultMaxScore">0</strong>
+          (<strong id="resultTotal">0</strong> รอบ)
+        </p>
+        <p>ความมั่นใจของ AI: <strong id="resultConfidence">0</strong>%</p>
 
-    <div class="game-area">
-      <div class="video-container" id="videoContainer">
-        <div class="targets-overlay" role="group" aria-label="เป้าหมายสีของมือ สุ่มตำแหน่งทุก round">
-          <div id="targetPurple" class="target-zone purple" data-color="neutral" aria-label="พื้นที่เตรียมพร้อม"></div>
-          <div id="targetRed" class="target-zone red" data-color="left" aria-label="เป้าหมายมือซ้าย"></div>
-          <div id="targetBlue" class="target-zone blue" data-color="right" aria-label="เป้าหมายมือขวา"></div>
-        </div>
-
-        <video id="webcam" playsinline aria-label="ภาพจากกล้อง"></video>
-        <canvas id="skeletonCanvas" aria-hidden="true"></canvas>
-
-        <div id="handDotLeft" class="hand-dot left" aria-hidden="true"></div>
-        <div id="handDotRight" class="hand-dot right" aria-hidden="true"></div>
-
-        <div id="levelBadge" class="level-badge" aria-live="polite">รอบ 1 / 12</div>
-
-        <div id="levelUpOverlay" class="level-up-overlay" aria-live="assertive">
-          <div class="level-up-card">
-            <div class="level-up-title"></div>
-            <div class="level-up-next"></div>
+        <div class="scores-grid">
+          <div class="score-card left">
+            <h3>มือซ้าย</h3>
+            <div class="metric-row">
+              <span>ความเร็ว</span><span id="leftSpeed">—</span>
+            </div>
+            <div class="metric-row">
+              <span>ความแม่นยำ</span><span id="leftAccuracy">—</span>
+            </div>
+            <div class="metric-row">
+              <span>คุณภาพการเคลื่อนไหว</span><span id="leftQuality">—</span>
+            </div>
+            <div class="metric-row">
+              <span>อัตราสำเร็จ</span><span id="leftSuccess">—</span>
+            </div>
+          </div>
+          <div class="score-card right">
+            <h3>มือขวา</h3>
+            <div class="metric-row">
+              <span>ความเร็ว</span><span id="rightSpeed">—</span>
+            </div>
+            <div class="metric-row">
+              <span>ความแม่นยำ</span><span id="rightAccuracy">—</span>
+            </div>
+            <div class="metric-row">
+              <span>คุณภาพการเคลื่อนไหว</span><span id="rightQuality">—</span>
+            </div>
+            <div class="metric-row">
+              <span>อัตราสำเร็จ</span><span id="rightSuccess">—</span>
+            </div>
           </div>
         </div>
 
-        <div class="stick-figure" aria-hidden="true">
-          <svg viewBox="0 0 80 160" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="40" cy="20" r="14" fill="none" stroke="#333" stroke-width="3"/>
-            <line x1="40" y1="34" x2="40" y2="90" stroke="#333" stroke-width="3"/>
-            <line x1="40" y1="50" x2="10" y2="70" stroke="#e53935" stroke-width="4"/>
-            <line x1="40" y1="50" x2="70" y2="70" stroke="#1e88e5" stroke-width="4"/>
-            <line x1="40" y1="90" x2="20" y2="140" stroke="#333" stroke-width="3"/>
-            <line x1="40" y1="90" x2="60" y2="140" stroke="#333" stroke-width="3"/>
-          </svg>
+        <p class="disclaimer">
+          เครื่องมือนี้เป็นการประเมินเบื้องต้นสำหรับ Hackathon เท่านั้น
+          ไม่ใช่การวินิจฉัยทางการแพทย์ หากมีข้อกังวลเรื่องการเคลื่อนไหว
+          กรุณาปรึกษาแพทย์หรือนักกายภาพบำบัด
+        </p>
+
+        <div class="controls">
+          <button id="btnPlayAgain" class="btn btn-primary" type="button">
+            เล่นอีกครั้ง
+          </button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="progress-section">
-      <div class="progress-label">
-        <span id="levelText">รอบ 0 / 12</span>
-        <span id="progressText">แตะถูก 0 / 24</span>
-      </div>
-      <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="12">
-        <div id="progressFill" class="progress-fill"></div>
-      </div>
-    </div>
-
-    <div id="feedbackBanner" class="feedback-banner" aria-live="polite"></div>
-
-    <div class="controls">
-      <button id="btnStop" class="btn btn-secondary" type="button" disabled>หยุด</button>
-      <button id="btnFinish" class="btn btn-success" type="button" disabled>ดูผล</button>
-    </div>
-  </section>
-
-  <section id="resultScreen" class="screen">
-    <div class="result-card">
-      <h2>ผลการประเมิน</h2>
-      <p id="resultSummary" class="prediction-box"></p>
-      <p>คะแนนรวม: <strong id="resultScore">0</strong> / <strong id="resultMaxScore">0</strong> แตะถูก จาก <strong id="resultTotal">0</strong> รอบ</p>
-      <p>ความมั่นใจของ AI: <strong id="resultConfidence">0</strong>%</p>
-
-      <div class="scores-grid">
-        <div class="score-card left">
-          <h3>มือซ้าย</h3>
-          <div class="metric-row"><span>ความเร็ว</span><span id="leftSpeed">—</span></div>
-          <div class="metric-row"><span>ความแม่นยำ</span><span id="leftAccuracy">—</span></div>
-          <div class="metric-row"><span>คุณภาพการเคลื่อนไหว</span><span id="leftQuality">—</span></div>
-          <div class="metric-row"><span>อัตราสำเร็จ</span><span id="leftSuccess">—</span></div>
-        </div>
-        <div class="score-card right">
-          <h3>มือขวา</h3>
-          <div class="metric-row"><span>ความเร็ว</span><span id="rightSpeed">—</span></div>
-          <div class="metric-row"><span>ความแม่นยำ</span><span id="rightAccuracy">—</span></div>
-          <div class="metric-row"><span>คุณภาพการเคลื่อนไหว</span><span id="rightQuality">—</span></div>
-          <div class="metric-row"><span>อัตราสำเร็จ</span><span id="rightSuccess">—</span></div>
-        </div>
-      </div>
-
-      <p class="disclaimer">
-        เครื่องมือนี้ใช้เพื่อการประเมินเบื้องต้นสำหรับ hackathon เท่านั้น ไม่ใช่การวินิจฉัยทางการแพทย์
-      </p>
-
-      <div class="controls">
-        <button id="btnPlayAgain" class="btn btn-primary" type="button">เล่นอีกครั้ง</button>
-      </div>
-    </div>
-  </section>
-
-  <script src="/static/js/api.js"></script>
-  <script src="/static/js/handTracker.js"></script>
-  <script src="/static/js/game.js"></script>
-</body>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/handTracker.js"></script>
+    <script src="/static/js/game.js"></script>
+  </body>
 </html>

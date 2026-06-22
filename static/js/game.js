@@ -251,8 +251,9 @@ class ColorMatchGame {
     try {
       this.tracker = new HandTracker(this.video, this.canvas, (hands) => this.onHands(hands));
       await this.tracker.init();
-    } catch {
-      this.setFeedback("ไม่สามารถเริ่มกล้องหรือระบบตรวจจับมือได้");
+    } catch (err) {
+      console.error("HandTracker init failed:", err);
+      this.setFeedback(`กล้องเริ่มไม่ได้: ${err.message || err}`);
       document.getElementById("btnStop").disabled = true;
       document.getElementById("btnFinish").disabled = true;
       this.state = "idle";
@@ -447,7 +448,8 @@ class ColorMatchGame {
       this.showScreen("result");
       if (this.tracker) this.tracker.stop();
       this.state = "done";
-    } catch {
+    } catch (err) {
+      console.error("showResults failed:", err);
       this.setFeedback("วิเคราะห์ผลไม่สำเร็จ กรุณาลองใหม่");
     }
   }

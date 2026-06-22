@@ -161,15 +161,17 @@ class HandTracker {
     ctx.fillStyle = colorBg;
     ctx.fill();
 
-    /* 4 — Hand label above circle */
+    /* 4 — Hand label above circle (counter CSS scaleX(-1) so text reads normally) */
     ctx.save();
+    ctx.translate(center.x, center.y - R - 6);
+    ctx.scale(-1, 1);               // undo the CSS horizontal flip
     ctx.font         = 'bold 18px "Noto Sans Thai","Segoe UI",sans-serif';
     ctx.textAlign    = "center";
     ctx.textBaseline = "bottom";
     ctx.shadowColor  = "rgba(0,0,0,0.85)";
     ctx.shadowBlur   = 6;
     ctx.fillStyle    = "#ffffff";
-    ctx.fillText(handLabel, center.x, center.y - R - 6);
+    ctx.fillText(handLabel, 0, 0);   // draw at origin (already translated)
     ctx.restore();
   }
 
@@ -225,7 +227,12 @@ class HandTracker {
       if (results.multiHandLandmarks && results.multiHandedness) {
         for (let i = 0; i < results.multiHandLandmarks.length; i++) {
           const landmarks = results.multiHandLandmarks[i];
-          const label     = results.multiHandedness[i].label;
+          /* MediaPipe reports handedness from the camera's viewpoint
+             (looking AT the person), so "Left" means the user's RIGHT
+             hand and vice-versa.  Flip the label so it matches the
+             user's own perspective (mirror view). */
+          const rawLabel  = results.multiHandedness[i].label;
+          const label     = rawLabel === "Left" ? "Right" : "Left";
           const point     = landmarks[9];
           const handData  = { x: point.x, y: point.y, landmarks };
 
