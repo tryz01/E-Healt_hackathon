@@ -83,6 +83,7 @@ def _trial_metrics(trial: TrialSubmission) -> dict[str, float | None]:
         if not pts:
             continue
 
+        hand_attempt = trial.left if hand == "Left" else trial.right
         times = [p[0] for p in pts]
         coords = [(p[1], p[2]) for p in pts]
         duration = max(times) - min(times) if len(times) > 1 else 0.001
@@ -92,7 +93,7 @@ def _trial_metrics(trial: TrialSubmission) -> dict[str, float | None]:
         jerk = _jerk_mean(times, coords)
         quality = (1.0 / (1.0 + jerk)) * 0.5 + path_eff * 0.5
 
-        reaction = trial.reaction_time if trial.hit_hand == hand else None
+        reaction = hand_attempt.reaction_time
         speed = 0.0
         if reaction and reaction > 0:
             speed = (1.0 / reaction) * 0.5 + (path_len / duration) * 0.001 * 0.5
@@ -100,12 +101,13 @@ def _trial_metrics(trial: TrialSubmission) -> dict[str, float | None]:
             speed = path_len / duration * 0.001
 
         accuracy = 0.0
-        if trial.hit and trial.hit_hand == hand:
-            last_x, last_y = coords[-1]
-            dist = math.hypot(last_x - trial.target_x, last_y - trial.target_y)
-            accuracy = max(0.0, 1.0 - dist / trial.target_radius)
-        elif trial.hit and trial.hit_hand != hand:
-            accuracy = 0.0
+        if hand_attempt.hit:
+            if hand_attempt.hit_distance is not None and hand_attempt.target_radius > 0:
+                accuracy = max(0.0, 1.0 - hand_attempt.hit_distance / hand_attempt.target_radius)
+            else:
+                last_x, last_y = coords[-1]
+                dist = math.hypot(last_x - hand_attempt.target_x, last_y - hand_attempt.target_y)
+                accuracy = max(0.0, 1.0 - dist / hand_attempt.target_radius)
 
         result[f"{prefix}_speed"] = min(1.0, speed)
         result[f"{prefix}_accuracy"] = accuracy
@@ -120,13 +122,9 @@ def _aggregate_hand(trials: list[TrialSubmission], hand: str) -> HandScores:
     successes = 0
 
     for trial in trials:
-        if trial.target_color == "purple":
-            continue
-        expected = "Left" if trial.target_color == "red" else "Right"
-        if hand != expected:
-            continue
         attempts += 1
-        if trial.hit and trial.hit_hand == hand:
+        hand_attempt = trial.left if hand == "Left" else trial.right
+        if hand_attempt.hit:
             successes += 1
         metrics = _trial_metrics(trial)
         prefix = hand.lower()
@@ -164,11 +162,8 @@ def analyze_session(trials: list[TrialSubmission]) -> AnalysisResult:
     )
 
     total_score = sum(
-        1
+        int(t.left.hit) + int(t.right.hit)
         for t in trials
-        if t.hit
-        and t.target_color != "purple"
-        and t.hit_hand == ("Left" if t.target_color == "red" else "Right")
     )
 
     return AnalysisResult(
@@ -178,5 +173,5 @@ def analyze_session(trials: list[TrialSubmission]) -> AnalysisResult:
         right_scores=right,
         summary_th=SUMMARY_TEMPLATES.get(prediction, SUMMARY_TEMPLATES["right_dominant"]),
         total_score=total_score,
-        trials_completed=len([t for t in trials if t.target_color != "purple"]),
+        trials_completed=len(trials),
     )

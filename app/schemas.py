@@ -3,7 +3,6 @@ from typing import Literal
 
 
 HandLabel = Literal["Left", "Right"]
-TargetColor = Literal["red", "blue", "purple"]
 
 
 class TrajectoryPoint(BaseModel):
@@ -13,17 +12,23 @@ class TrajectoryPoint(BaseModel):
     hand: HandLabel
 
 
-class TrialSubmission(BaseModel):
-    session_id: str
-    trial_index: int
-    target_color: TargetColor
+class HandAttempt(BaseModel):
+    color: str
     target_x: float
     target_y: float
     target_radius: float = 80.0
     hit: bool = False
-    hit_hand: HandLabel | None = None
     reaction_time: float | None = None
+    hit_distance: float | None = None
+
+
+class TrialSubmission(BaseModel):
+    session_id: str
+    trial_index: int
+    left: HandAttempt
+    right: HandAttempt
     points: list[TrajectoryPoint] = Field(default_factory=list)
+    round_duration: float | None = None
 
 
 class SessionStartResponse(BaseModel):

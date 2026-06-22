@@ -1,199 +1,168 @@
-/* ─── Constants ──────────────────────────────────────────────── */
-const TOTAL_TRIALS  = 12;
+const TOTAL_ROUNDS = 12;
 const TARGET_RADIUS = 120;
+const ROUND_TIME_LIMIT_MS = 8500;
+const BETWEEN_ROUND_DELAY_MS = 1200;
+const MAX_SCORE = TOTAL_ROUNDS * 2;
 
-/* Color pairs — each trial uses the next pair */
 const COLOR_SCHEMES = [
-  { leftHex: "#e53935", rightHex: "#1e88e5", neutralHex: "#9c27b0", leftLabel: "แดง",    rightLabel: "น้ำเงิน" },
-  { leftHex: "#43a047", rightHex: "#fb8c00", neutralHex: "#8e24aa", leftLabel: "เขียว",   rightLabel: "ส้ม"     },
-  { leftHex: "#e91e63", rightHex: "#00bcd4", neutralHex: "#7e57c2", leftLabel: "ชมพู",    rightLabel: "ฟ้า"     },
-  { leftHex: "#fdd835", rightHex: "#5e35b1", neutralHex: "#ef6c00", leftLabel: "เหลือง",  rightLabel: "ม่วง"    },
-  { leftHex: "#00e676", rightHex: "#ff5252", neutralHex: "#3949ab", leftLabel: "เขียวอ่อน", rightLabel: "แดง"   },
-  { leftHex: "#26c6da", rightHex: "#ff7043", neutralHex: "#66bb6a", leftLabel: "ฟ้าอ่อน", rightLabel: "ส้มแดง" },
-  { leftHex: "#ab47bc", rightHex: "#ffee58", neutralHex: "#29b6f6", leftLabel: "ม่วง",    rightLabel: "เหลือง" },
-  { leftHex: "#ff8a65", rightHex: "#42a5f5", neutralHex: "#ec407a", leftLabel: "ส้มอ่อน", rightLabel: "ฟ้า"    },
-  { leftHex: "#7cb342", rightHex: "#e040fb", neutralHex: "#ffa726", leftLabel: "เขียวเข้ม", rightLabel: "ชมพูม่วง" },
-  { leftHex: "#00acc1", rightHex: "#d81b60", neutralHex: "#8bc34a", leftLabel: "เขียวน้ำ", rightLabel: "แดงเข้ม" },
-  { leftHex: "#f4511e", rightHex: "#00897b", neutralHex: "#5c6bc0", leftLabel: "ส้มเข้ม", rightLabel: "เขียวเทา" },
+  { leftHex: "#43a047", rightHex: "#e53935", neutralHex: "#8e24aa", leftLabel: "เขียว", rightLabel: "แดง" },
+  { leftHex: "#1e88e5", rightHex: "#fb8c00", neutralHex: "#6d4c41", leftLabel: "ฟ้า", rightLabel: "ส้ม" },
+  { leftHex: "#ab47bc", rightHex: "#fdd835", neutralHex: "#3949ab", leftLabel: "ม่วง", rightLabel: "เหลือง" },
+  { leftHex: "#e91e63", rightHex: "#00bcd4", neutralHex: "#5e35b1", leftLabel: "ชมพู", rightLabel: "ฟ้าอมเขียว" },
+  { leftHex: "#00e676", rightHex: "#ff5252", neutralHex: "#263238", leftLabel: "เขียวสด", rightLabel: "แดงสด" },
+  { leftHex: "#26c6da", rightHex: "#ff7043", neutralHex: "#7cb342", leftLabel: "ฟ้าอ่อน", rightLabel: "ส้มอ่อน" },
+  { leftHex: "#7cb342", rightHex: "#e040fb", neutralHex: "#ff8a65", leftLabel: "เขียวอ่อน", rightLabel: "ม่วงสด" },
+  { leftHex: "#ff8a65", rightHex: "#42a5f5", neutralHex: "#c0ca33", leftLabel: "ส้มพีช", rightLabel: "ฟ้าสว่าง" },
+  { leftHex: "#00acc1", rightHex: "#d81b60", neutralHex: "#8bc34a", leftLabel: "ฟ้าเข้ม", rightLabel: "ชมพูเข้ม" },
+  { leftHex: "#f4511e", rightHex: "#00897b", neutralHex: "#5c6bc0", leftLabel: "ส้มเข้ม", rightLabel: "เขียวน้ำทะเล" },
   { leftHex: "#6d4c41", rightHex: "#039be5", neutralHex: "#c0ca33", leftLabel: "น้ำตาล", rightLabel: "ฟ้าสด" },
+  { leftHex: "#8e24aa", rightHex: "#43a047", neutralHex: "#e53935", leftLabel: "ม่วงเข้ม", rightLabel: "เขียวเข้ม" },
 ];
 
-/* Maps logical target name → existing HTML element ID */
 const ZONE_IDS = {
-  left:    "targetRed",
-  right:   "targetBlue",
+  left: "targetRed",
+  right: "targetBlue",
   neutral: "targetPurple",
 };
 
-/* ─── Text pools ──────────────────────────────────────────────── */
-const ENCOURAGEMENT = ["เก่งมาก!", "ดีมากเลย!", "ทำได้ดีมาก!", "เยี่ยมเลย!", "สุดยอด!"];
-const GENTLE_MISS   = ["ไม่เป็นไร ลองอีกครั้งนะ", "ครั้งหน้าทำได้แน่นอน", "ใกล้แล้ว ลองใหม่อีกนิด"];
+const ENCOURAGEMENT = ["เก่งมาก!", "ยอดเยี่ยม!", "ทำได้ดีมาก!", "สุดยอด!", "แม่นมาก!"];
+const GENTLE_MISS = ["ไม่เป็นไร ลองรอบถัดไป", "ใกล้แล้ว ลองใหม่อีกครั้ง", "เกือบผ่านแล้ว"];
 
 const PREDICTION_LABELS = {
-  right_dominant:        "มือขวาถนัด",
-  left_dominant:         "มือซ้ายถนัด",
-  learned_non_use_left:  "แนวโน้ม Learned Non-Use (มือซ้าย)",
+  right_dominant: "มือขวาถนัด",
+  left_dominant: "มือซ้ายถนัด",
+  learned_non_use_left: "แนวโน้ม Learned Non-Use (มือซ้าย)",
   learned_non_use_right: "แนวโน้ม Learned Non-Use (มือขวา)",
 };
 
-/* ─── Main Game Class ─────────────────────────────────────────── */
 class ColorMatchGame {
   constructor() {
-    this.sessionId      = null;
-    this.tracker        = null;
-    this.state          = "idle";
-    this.totalTrials    = 0;
-    this.score          = 0;
-    this.currentTarget  = null; // "left" | "right" | "neutral"
-    this.trialStartTime = null;
-    this.trajectory     = [];
-    this.containerRect  = null;
+    this.sessionId = null;
+    this.tracker = null;
+    this.state = "idle";
+    this.totalTrials = 0;
+    this.score = 0;
     this.currentSchemeIdx = 0;
-    this.currentScheme   = COLOR_SCHEMES[0];
+    this.currentScheme = COLOR_SCHEMES[0];
+    this.currentRound = null;
+    this.trialStartTime = null;
+    this.trajectory = [];
+    this.roundHits = { left: false, right: false };
+    this.roundReactionTimes = { left: null, right: null };
+    this.roundHitDistances = { left: null, right: null };
+    this.roundTimer = null;
+    this.advanceTimer = null;
 
-    this.video     = document.getElementById("webcam");
-    this.canvas    = document.getElementById("skeletonCanvas");
+    this.video = document.getElementById("webcam");
+    this.canvas = document.getElementById("skeletonCanvas");
     this.container = document.getElementById("videoContainer");
-    this.dotLeft   = document.getElementById("handDotLeft");
-    this.dotRight  = document.getElementById("handDotRight");
+    this.dotLeft = document.getElementById("handDotLeft");
+    this.dotRight = document.getElementById("handDotRight");
 
     this.bindUI();
+    this.updateScoreDisplay();
+    this.updateProgress();
   }
 
-  /* ─── UI binding ────────────────────────────────────────────── */
   bindUI() {
     document.getElementById("btnStartWelcome").addEventListener("click", () => this.start());
-    document.getElementById("btnStop")        .addEventListener("click", () => this.stop());
-    document.getElementById("btnFinish")      .addEventListener("click", () => this.showResults());
-    document.getElementById("btnPlayAgain")   .addEventListener("click", () => this.reset());
+    document.getElementById("btnStop").addEventListener("click", () => this.stop());
+    document.getElementById("btnFinish").addEventListener("click", () => this.showResults());
+    document.getElementById("btnPlayAgain").addEventListener("click", () => this.reset());
   }
 
   showScreen(name) {
-    document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+    document.querySelectorAll(".screen").forEach((screen) => screen.classList.remove("active"));
     document.getElementById(`${name}Screen`).classList.add("active");
-    // toggle fullscreen body class for game screen
     document.body.classList.toggle("game-active", name === "game");
   }
 
-  setFeedback(msg) {
-    document.getElementById("feedbackBanner").textContent = msg;
+  setFeedback(message) {
+    document.getElementById("feedbackBanner").textContent = message;
   }
 
-  /* ─── Progress display ──────────────────────────────────────── */
+  speak(text) {
+    if (!("speechSynthesis" in window)) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "th-TH";
+    utterance.rate = 0.9;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utterance);
+  }
+
+  clearTimers() {
+    if (this.roundTimer) {
+      clearTimeout(this.roundTimer);
+      this.roundTimer = null;
+    }
+    if (this.advanceTimer) {
+      clearTimeout(this.advanceTimer);
+      this.advanceTimer = null;
+    }
+  }
+
+  updateScoreDisplay() {
+    document.getElementById("scoreValue").textContent = String(this.score);
+    const scoreMax = document.getElementById("scoreMaxValue");
+    if (scoreMax) scoreMax.textContent = String(MAX_SCORE);
+  }
+
   updateProgress() {
-    document.getElementById("levelText")   .textContent = `รอบ ${this.totalTrials} / ${TOTAL_TRIALS}`;
-    document.getElementById("progressText").textContent = `คะแนน ${this.score} / ${this.totalTrials}`;
-    const pct = (this.totalTrials / TOTAL_TRIALS) * 100;
+    document.getElementById("levelText").textContent = `รอบ ${this.totalTrials} / ${TOTAL_ROUNDS}`;
+    document.getElementById("progressText").textContent = `แตะถูก ${this.score} / ${MAX_SCORE}`;
+    const badgeText =
+      this.state === "done"
+        ? "จบเกม"
+        : this.totalTrials === 0
+          ? "เตรียมพร้อม"
+          : `รอบ ${this.totalTrials} / ${TOTAL_ROUNDS}`;
+    document.getElementById("levelBadge").textContent = badgeText;
+
+    const pct = (this.totalTrials / TOTAL_ROUNDS) * 100;
     document.getElementById("progressFill").style.width = `${pct}%`;
     document.querySelector(".progress-bar").setAttribute("aria-valuenow", String(this.totalTrials));
-    document.getElementById("levelBadge").textContent = `รอบ ${this.totalTrials} / ${TOTAL_TRIALS}`;
+    document.querySelector(".progress-bar").setAttribute("aria-valuemax", String(TOTAL_ROUNDS));
   }
 
-  /* ─── TTS ───────────────────────────────────────────────────── */
-  speak(text) {
-    if ("speechSynthesis" in window) {
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "th-TH";
-      u.rate = 0.85;
-      speechSynthesis.cancel();
-      speechSynthesis.speak(u);
+  applyScheme() {
+    const scheme = this.currentScheme;
+
+    document.getElementById(ZONE_IDS.left).style.background = scheme.leftHex;
+    document.getElementById(ZONE_IDS.right).style.background = scheme.rightHex;
+    document.getElementById(ZONE_IDS.neutral).style.background = scheme.neutralHex;
+
+    this.dotLeft.style.background = scheme.leftHex;
+    this.dotRight.style.background = scheme.rightHex;
+    this.dotLeft.style.opacity = "1";
+    this.dotRight.style.opacity = "1";
+
+    if (this.tracker) {
+      this.tracker.setHandColors(scheme.leftHex, scheme.rightHex);
     }
   }
 
-  /* ─── Apply color scheme to DOM ─────────────────────────────── */
-  applyColors() {
-    const c = this.currentScheme;
+  setTargetHighlight(targets) {
+    document.querySelectorAll(".target-zone").forEach((zone) => zone.classList.remove("active"));
 
-    document.getElementById(ZONE_IDS.left)   .style.background = c.leftHex;
-    document.getElementById(ZONE_IDS.right)  .style.background = c.rightHex;
-    document.getElementById(ZONE_IDS.neutral).style.background = c.neutralHex;
-
-    /* hand dots — start neutral until first trial */
-    this.dotLeft .style.background = c.leftHex;
-    this.dotRight.style.background = c.rightHex;
-    this.dotLeft .style.opacity    = "1";
-    this.dotRight.style.opacity    = "1";
-
-    /* pass to tracker for skeleton circle colors */
-    if (this.tracker) this.tracker.setHandColors(c.leftHex, c.rightHex);
-  }
-
-  /* ─── Update hand-dot colors to reflect current target ──────── */
-  updateHandColors(target) {
-    const c = this.currentScheme;
-    const DIMMED = "#555566"; // neutral grey for inactive hand
-
-    if (target === "left") {
-      this.dotLeft .style.background = c.leftHex;
-      this.dotRight.style.background = DIMMED;
-      this.dotLeft .style.opacity    = "1";
-      this.dotRight.style.opacity    = "0.45";
-      if (this.tracker) this.tracker.setHandColors(c.leftHex, DIMMED);
-    } else if (target === "right") {
-      this.dotLeft .style.background = DIMMED;
-      this.dotRight.style.background = c.rightHex;
-      this.dotLeft .style.opacity    = "0.45";
-      this.dotRight.style.opacity    = "1";
-      if (this.tracker) this.tracker.setHandColors(DIMMED, c.rightHex);
-    } else {
-      /* calibration / neutral */
-      this.dotLeft .style.background = c.leftHex;
-      this.dotRight.style.background = c.rightHex;
-      this.dotLeft .style.opacity    = "1";
-      this.dotRight.style.opacity    = "1";
-      if (this.tracker) this.tracker.setHandColors(c.leftHex, c.rightHex);
-    }
-  }
-
-  /* ─── Start game ────────────────────────────────────────────── */
-  async start() {
-    try {
-      const { session_id } = await API.startSession();
-      this.sessionId = session_id;
-    } catch {
-      this.setFeedback("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+    if (targets === "neutral") {
+      const neutralZone = document.getElementById(ZONE_IDS.neutral);
+      if (neutralZone) neutralZone.classList.add("active");
       return;
     }
 
-    this.showScreen("game");
-    this.score       = 0;
-    this.totalTrials = 0;
-    document.getElementById("scoreValue").textContent = "0";
-    document.getElementById("btnStop")  .disabled = false;
-    document.getElementById("btnFinish").disabled = true;
-
-    this.applyColors();
-    this.updateProgress();
-
-    this.tracker = new HandTracker(this.video, this.canvas, (hands) => this.onHands(hands));
-    await this.tracker.init();
-
-    this.state = "calibrating";
-    this.setFeedback("ยกมือทั้งสองข้างให้กล้องเห็น...");
-    document.getElementById("subInstruction").textContent = "เตรียมตัว — ยกมือซ้ายและขวา";
-    this.highlightTarget("neutral");
-
-    setTimeout(() => {
-      if (this.state === "calibrating") {
-        this.state = "playing";
-        this.nextTrial();
-      }
-    }, 5000);
-  }
-
-  /* ─── Target highlight ──────────────────────────────────────── */
-  highlightTarget(which) {
-    document.querySelectorAll(".target-zone").forEach((z) => z.classList.remove("active"));
-    const id = ZONE_IDS[which];
-    if (id) document.getElementById(id).classList.add("active");
+    for (const target of targets) {
+      const id = ZONE_IDS[target];
+      if (id) document.getElementById(id).classList.add("active");
+    }
   }
 
   getTargetCenter(which) {
-    const container = this.container.getBoundingClientRect();
-    const zone      = document.getElementById(ZONE_IDS[which]).getBoundingClientRect();
+    const containerRect = this.container.getBoundingClientRect();
+    const zoneRect = document.getElementById(ZONE_IDS[which]).getBoundingClientRect();
+
     return {
-      x: zone.left + zone.width  / 2 - container.left,
-      y: zone.top  + zone.height / 2 - container.top,
+      x: zoneRect.left + zoneRect.width / 2 - containerRect.left,
+      y: zoneRect.top + zoneRect.height / 2 - containerRect.top,
     };
   }
 
@@ -205,23 +174,132 @@ class ColorMatchGame {
     };
   }
 
-  /* ─── Per-frame hand callback ───────────────────────────────── */
+  updateRoundCopy() {
+    const leftLabel = this.currentScheme.leftLabel;
+    const rightLabel = this.currentScheme.rightLabel;
+    document.getElementById("mainInstruction").textContent = `มือซ้ายแตะ ${leftLabel} มือขวาแตะ ${rightLabel}`;
+    document.getElementById("subInstruction").textContent =
+      `รอบนี้ มือซ้าย = ${leftLabel} และ มือขวา = ${rightLabel}`;
+  }
+
+  async start() {
+    try {
+      const { session_id } = await API.startSession();
+      this.sessionId = session_id;
+    } catch {
+      this.setFeedback("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+      return;
+    }
+
+    this.clearTimers();
+    this.showScreen("game");
+    this.score = 0;
+    this.totalTrials = 0;
+    this.currentSchemeIdx = 0;
+    this.currentScheme = COLOR_SCHEMES[0];
+    this.currentRound = null;
+    this.roundHits = { left: false, right: false };
+    this.roundReactionTimes = { left: null, right: null };
+    this.roundHitDistances = { left: null, right: null };
+    this.trajectory = [];
+    this.trialStartTime = null;
+
+    this.updateScoreDisplay();
+    this.updateProgress();
+    document.getElementById("btnStop").disabled = false;
+    document.getElementById("btnFinish").disabled = true;
+
+    this.applyScheme();
+    this.setTargetHighlight("neutral");
+    this.setFeedback("เตรียมตัว: ยกมือทั้งสองข้างให้กล้องเห็น");
+    document.getElementById("mainInstruction").textContent = "เตรียมตัวให้พร้อม";
+    document.getElementById("subInstruction").textContent = "รอเริ่มรอบแรกและยกมือทั้งสองข้างให้อยู่ในเฟรม";
+
+    try {
+      this.tracker = new HandTracker(this.video, this.canvas, (hands) => this.onHands(hands));
+      await this.tracker.init();
+    } catch {
+      this.setFeedback("ไม่สามารถเริ่มกล้องหรือระบบตรวจจับมือได้");
+      document.getElementById("btnStop").disabled = true;
+      document.getElementById("btnFinish").disabled = true;
+      this.state = "idle";
+      return;
+    }
+
+    this.state = "calibrating";
+
+    setTimeout(() => {
+      if (this.state === "calibrating") {
+        this.nextRound();
+      }
+    }, 5000);
+  }
+
+  nextRound() {
+    if (this.state === "done") return;
+    if (this.totalTrials >= TOTAL_ROUNDS) {
+      this.finishPlaying();
+      return;
+    }
+
+    this.clearTimers();
+
+    this.totalTrials += 1;
+    this.currentSchemeIdx = (this.totalTrials - 1) % COLOR_SCHEMES.length;
+    this.currentScheme = COLOR_SCHEMES[this.currentSchemeIdx];
+    this.applyScheme();
+
+    const leftTarget = this.getTargetCenter("left");
+    const rightTarget = this.getTargetCenter("right");
+    this.currentRound = {
+      left: {
+        color: this.currentScheme.leftHex,
+        target_x: leftTarget.x,
+        target_y: leftTarget.y,
+        target_radius: TARGET_RADIUS,
+      },
+      right: {
+        color: this.currentScheme.rightHex,
+        target_x: rightTarget.x,
+        target_y: rightTarget.y,
+        target_radius: TARGET_RADIUS,
+      },
+    };
+
+    this.roundHits = { left: false, right: false };
+    this.roundReactionTimes = { left: null, right: null };
+    this.roundHitDistances = { left: null, right: null };
+    this.trajectory = [];
+    this.trialStartTime = performance.now();
+    this.state = "trial";
+
+    this.updateProgress();
+    this.updateRoundCopy();
+    this.setTargetHighlight(["left", "right"]);
+    this.setFeedback(
+      `รอบ ${this.totalTrials}: มือซ้ายแตะ ${this.currentScheme.leftLabel} มือขวาแตะ ${this.currentScheme.rightLabel}`
+    );
+    this.speak(`มือซ้าย ${this.currentScheme.leftLabel} มือขวา ${this.currentScheme.rightLabel}`);
+
+    this.roundTimer = setTimeout(() => this.endRound("timeout"), ROUND_TIME_LIMIT_MS);
+  }
+
   onHands(hands) {
-    this.containerRect = this.container.getBoundingClientRect();
+    if (!this.container) return;
 
     if (hands.left) {
-      const pos = this.handToScreen(hands.left);
-      this.dotLeft.style.left = `${pos.x}px`;
-      this.dotLeft.style.top  = `${pos.y}px`;
+      const leftPos = this.handToScreen(hands.left);
+      this.dotLeft.style.left = `${leftPos.x}px`;
+      this.dotLeft.style.top = `${leftPos.y}px`;
       this.dotLeft.classList.add("visible");
     } else {
       this.dotLeft.classList.remove("visible");
     }
 
     if (hands.right) {
-      const pos = this.handToScreen(hands.right);
-      this.dotRight.style.left = `${pos.x}px`;
-      this.dotRight.style.top  = `${pos.y}px`;
+      const rightPos = this.handToScreen(hands.right);
+      this.dotRight.style.left = `${rightPos.x}px`;
+      this.dotRight.style.top = `${rightPos.y}px`;
       this.dotRight.classList.add("visible");
     } else {
       this.dotRight.classList.remove("visible");
@@ -230,126 +308,112 @@ class ColorMatchGame {
     if (this.state !== "trial") return;
 
     const now = performance.now();
-    const t   = (now - this.trialStartTime) / 1000;
+    const t = (now - this.trialStartTime) / 1000;
 
     if (hands.left) {
-      const pos = this.handToScreen(hands.left);
-      this.trajectory.push({ t, x: pos.x, y: pos.y, hand: "Left" });
+      const leftPos = this.handToScreen(hands.left);
+      this.trajectory.push({ t, x: leftPos.x, y: leftPos.y, hand: "Left" });
+      this.checkHandHit("left", hands.left);
     }
+
     if (hands.right) {
-      const pos = this.handToScreen(hands.right);
-      this.trajectory.push({ t, x: pos.x, y: pos.y, hand: "Right" });
-    }
-
-    this.checkHit(hands);
-  }
-
-  /* ─── Collision check ───────────────────────────────────────── */
-  checkHit(hands) {
-    if (!this.currentTarget || this.currentTarget === "neutral") return;
-
-    const hand = this.currentTarget === "left" ? hands.left : hands.right;
-    if (!hand) return;
-
-    const pos    = this.handToScreen(hand);
-    const target = this.getTargetCenter(this.currentTarget);
-    const dist   = Math.hypot(pos.x - target.x, pos.y - target.y);
-
-    if (dist <= TARGET_RADIUS) {
-      const expectedHand = this.currentTarget === "left" ? "Left" : "Right";
-      this.completeTrial(true, expectedHand, dist);
+      const rightPos = this.handToScreen(hands.right);
+      this.trajectory.push({ t, x: rightPos.x, y: rightPos.y, hand: "Right" });
+      this.checkHandHit("right", hands.right);
     }
   }
 
-  /* ─── Advance trial ─────────────────────────────────────────── */
-  nextTrial() {
-    /* Game ends after TOTAL_TRIALS */
-    if (this.totalTrials >= TOTAL_TRIALS) {
-      this.finishPlaying();
+  checkHandHit(handKey, handData) {
+    if (this.state !== "trial" || !this.currentRound || this.roundHits[handKey]) return;
+
+    const attempt = this.currentRound[handKey];
+    const pos = this.handToScreen(handData);
+    const dist = Math.hypot(pos.x - attempt.target_x, pos.y - attempt.target_y);
+
+    if (dist > attempt.target_radius) return;
+
+    const reactionTime = (performance.now() - this.trialStartTime) / 1000;
+    this.roundHits[handKey] = true;
+    this.roundReactionTimes[handKey] = reactionTime;
+    this.roundHitDistances[handKey] = dist;
+    this.score += 1;
+    this.updateScoreDisplay();
+
+    if (this.roundHits.left && this.roundHits.right) {
+      this.setFeedback("ครบทั้งสองมือแล้ว!");
+      this.endRound("completed");
       return;
     }
 
-    this.currentTarget = Math.random() < 0.5 ? "left" : "right";
-    this.totalTrials++;
-
-    /* ─ Pick next color scheme for this trial ─ */
-    this.currentSchemeIdx = (this.totalTrials - 1) % COLOR_SCHEMES.length;
-    this.currentScheme   = COLOR_SCHEMES[this.currentSchemeIdx];
-    this.applyColors();
-
-    this.updateProgress();
-
-    const isLeft = this.currentTarget === "left";
-    const label  = isLeft ? this.currentScheme.leftLabel  : this.currentScheme.rightLabel;
-    const hand   = isLeft ? "ซ้าย"                        : "ขวา";
-
-    this.highlightTarget(this.currentTarget);
-    this.updateHandColors(this.currentTarget); // ← เปลี่ยนสีมือทุกรอบ
-    document.getElementById("subInstruction").textContent =
-      `เอามือ${hand} (${label}) ไปแตะวงสี${label}`;
-    this.speak(`ใส่สี${label}`);
-
-    this.trajectory     = [];
-    this.trialStartTime = performance.now();
-    this.state          = "trial";
+    const remaining = handKey === "left" ? "มือขวา" : "มือซ้าย";
+    this.setFeedback(`${handKey === "left" ? "มือซ้าย" : "มือขวา"}ถูกแล้ว เหลือ${remaining}อีกข้าง`);
   }
 
-  /* ─── Complete one trial ────────────────────────────────────── */
-  async completeTrial(hit, hitHand, dist) {
+  async endRound(reason) {
     if (this.state !== "trial") return;
+
     this.state = "between";
-
-    const reactionTime = hit ? (performance.now() - this.trialStartTime) / 1000 : null;
-    const target       = this.getTargetCenter(this.currentTarget);
-    const expectedHand = this.currentTarget === "left" ? "Left" : "Right";
-    const correct      = hit && hitHand === expectedHand;
-
-    if (correct) {
-      this.score++;
-      document.getElementById("scoreValue").textContent = String(this.score);
-      this.setFeedback(ENCOURAGEMENT[Math.floor(Math.random() * ENCOURAGEMENT.length)]);
-    } else {
-      this.setFeedback(GENTLE_MISS[Math.floor(Math.random() * GENTLE_MISS.length)]);
+    if (this.roundTimer) {
+      clearTimeout(this.roundTimer);
+      this.roundTimer = null;
     }
 
     const trial = {
-      session_id:    this.sessionId,
-      trial_index:   this.totalTrials - 1,
-      target_color:  this.currentTarget === "left" ? "red" : "blue",
-      target_x:      target.x,
-      target_y:      target.y,
-      target_radius: TARGET_RADIUS,
-      hit:           correct,
-      hit_hand:      hitHand,
-      reaction_time: reactionTime,
-      points:        this.trajectory,
+      session_id: this.sessionId,
+      trial_index: this.totalTrials - 1,
+      left: {
+        ...this.currentRound.left,
+        hit: this.roundHits.left,
+        reaction_time: this.roundReactionTimes.left,
+        hit_distance: this.roundHitDistances.left,
+      },
+      right: {
+        ...this.currentRound.right,
+        hit: this.roundHits.right,
+        reaction_time: this.roundReactionTimes.right,
+        hit_distance: this.roundHitDistances.right,
+      },
+      points: this.trajectory,
+      round_duration: (performance.now() - this.trialStartTime) / 1000,
     };
 
-    try { await API.submitTrial(trial); } catch { console.warn("Trial submit failed"); }
+    try {
+      await API.submitTrial(trial);
+    } catch {
+      console.warn("Trial submit failed");
+    }
 
-    this.highlightTarget("neutral");
-    setTimeout(() => this.nextTrial(), 1500);
+    this.setTargetHighlight("neutral");
+    this.setFeedback(
+      reason === "completed"
+        ? "รอบนี้ครบแล้ว เตรียมรอบถัดไป"
+        : "หมดเวลารอบนี้ เตรียมรอบถัดไป"
+    );
+
+    this.advanceTimer = setTimeout(() => this.nextRound(), BETWEEN_ROUND_DELAY_MS);
   }
 
-  /* ─── All trials done ───────────────────────────────────────── */
   finishPlaying() {
+    this.clearTimers();
     this.state = "done";
-    this.highlightTarget("neutral");
-    this.updateHandColors("neutral"); // ← คืนสีมือกลับปกติ
-    document.getElementById("subInstruction").textContent = "จบเกมแล้ว — กดดูผลเพื่อวิเคราะห์";
-    this.setFeedback("เสร็จแล้ว! กดปุ่ม ดูผล เพื่อดูการประเมิน");
+    this.setTargetHighlight("neutral");
+    document.getElementById("mainInstruction").textContent = "จบเกมแล้ว";
+    document.getElementById("subInstruction").textContent = "กดดูผลเพื่อประเมินภาพรวมของมือทั้งสองข้าง";
+    this.setFeedback("จบเกมแล้ว กดดูผลเพื่อประเมินภาพรวม");
     document.getElementById("btnFinish").disabled = false;
-    document.getElementById("btnStop")  .disabled = true;
+    document.getElementById("btnStop").disabled = true;
   }
 
-  /* ─── Show results ──────────────────────────────────────────── */
   async showResults() {
     if (!this.sessionId) return;
+
+    this.clearTimers();
     try {
       const result = await API.analyze(this.sessionId);
       this.renderResults(result);
       this.showScreen("result");
       if (this.tracker) this.tracker.stop();
+      this.state = "done";
     } catch {
       this.setFeedback("วิเคราะห์ผลไม่สำเร็จ กรุณาลองใหม่");
     }
@@ -357,43 +421,60 @@ class ColorMatchGame {
 
   renderResults(result) {
     const predLabel = PREDICTION_LABELS[result.prediction] || result.prediction;
-    document.getElementById("resultSummary")   .textContent = `${predLabel}: ${result.summary_th}`;
-    document.getElementById("resultScore")     .textContent = result.total_score;
-    document.getElementById("resultTotal")     .textContent = result.trials_completed;
+    document.getElementById("resultSummary").textContent = `${predLabel}: ${result.summary_th}`;
+    document.getElementById("resultScore").textContent = result.total_score;
+    document.getElementById("resultMaxScore").textContent = result.trials_completed * 2;
+    document.getElementById("resultTotal").textContent = result.trials_completed;
     document.getElementById("resultConfidence").textContent = Math.round(result.confidence * 100);
 
-    const fmt = (v) => `${Math.round(v * 100)}%`;
-    document.getElementById("leftSpeed")   .textContent = fmt(result.left_scores.speed);
+    const fmt = (value) => `${Math.round(value * 100)}%`;
+    document.getElementById("leftSpeed").textContent = fmt(result.left_scores.speed);
     document.getElementById("leftAccuracy").textContent = fmt(result.left_scores.accuracy);
-    document.getElementById("leftQuality") .textContent = fmt(result.left_scores.quality);
-    document.getElementById("leftSuccess") .textContent = fmt(result.left_scores.success_rate);
-
-    document.getElementById("rightSpeed")   .textContent = fmt(result.right_scores.speed);
+    document.getElementById("leftQuality").textContent = fmt(result.left_scores.quality);
+    document.getElementById("leftSuccess").textContent = fmt(result.left_scores.success_rate);
+    document.getElementById("rightSpeed").textContent = fmt(result.right_scores.speed);
     document.getElementById("rightAccuracy").textContent = fmt(result.right_scores.accuracy);
-    document.getElementById("rightQuality") .textContent = fmt(result.right_scores.quality);
-    document.getElementById("rightSuccess") .textContent = fmt(result.right_scores.success_rate);
+    document.getElementById("rightQuality").textContent = fmt(result.right_scores.quality);
+    document.getElementById("rightSuccess").textContent = fmt(result.right_scores.success_rate);
   }
 
   stop() {
+    this.clearTimers();
     this.state = "done";
     if (this.tracker) this.tracker.stop();
+    document.getElementById("mainInstruction").textContent = "หยุดการเล่นแล้ว";
+    document.getElementById("subInstruction").textContent = "กดดูผลเพื่อวิเคราะห์รอบที่เล่นไปแล้ว";
     document.getElementById("btnFinish").disabled = false;
-    document.getElementById("btnStop")  .disabled = true;
-    this.setFeedback("หยุดแล้ว — กด ดูผล เพื่อวิเคราะห์จากรอบที่เล่นไป");
+    document.getElementById("btnStop").disabled = true;
+    this.setFeedback("หยุดการเล่นแล้ว กดดูผลเพื่อวิเคราะห์");
   }
 
   reset() {
+    this.clearTimers();
     if (this.tracker) this.tracker.stop();
-    this.tracker     = null;
-    this.sessionId   = null;
-    this.state       = "idle";
+    this.tracker = null;
+    this.sessionId = null;
+    this.state = "idle";
     this.totalTrials = 0;
-    this.score       = 0;
+    this.score = 0;
+    this.currentSchemeIdx = 0;
+    this.currentScheme = COLOR_SCHEMES[0];
+    this.currentRound = null;
+    this.roundHits = { left: false, right: false };
+    this.roundReactionTimes = { left: null, right: null };
+    this.roundHitDistances = { left: null, right: null };
+    this.trajectory = [];
+    this.trialStartTime = null;
+
     this.showScreen("welcome");
-    this.setFeedback("");
-    document.getElementById("scoreValue").textContent = "0";
+    this.updateScoreDisplay();
     this.updateProgress();
+    this.setFeedback("");
+    document.getElementById("btnFinish").disabled = true;
+    document.getElementById("btnStop").disabled = true;
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => { new ColorMatchGame(); });
+document.addEventListener("DOMContentLoaded", () => {
+  new ColorMatchGame();
+});
